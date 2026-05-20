@@ -1,0 +1,49 @@
+name: Promote dev to main
+
+on:
+  workflow_dispatch:
+    inputs:
+      title:
+        description: "PR title (leave blank for auto-generated)"
+        required: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  create-promotion-pr:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: dev
+          fetch-depth: 0
+
+      - name: Generate PR title
+        id: title
+        run: |
+          if [ -n "${{ github.event.inputs.title }}" ]; then
+            echo "value=${{ github.event.inputs.title }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=Promote dev → main ($(date -u +%Y-%m-%d))" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create Pull Request
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Check if an open promotion PR already exists
+          EXISTING=$(gh pr list --base main --head dev --state open --json number --jq '.[0].number')
+          if [ -n "$EXISTING" ]; then
+            echo "::notice::Promotion PR #$EXISTING already exists — skipping creation."
+            exit 0
+          fi
+
+          gh pr create \
+            --base main \
+            --head dev \
+            --title "${{ steps.title.outputs.value }}" \
+            --body "Automated promotion of \`dev\` into \`main\`.
+
+          Triggered by @${{ github.actor }} via workflow_dispatch."
