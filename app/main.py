@@ -36,6 +36,11 @@ WEATHER_DATA = {
 }
 
 
+@app.get("/cities")
+def get_cities():
+    return [data["city"] for data in WEATHER_DATA.values()]
+
+
 @app.get("/health")
 def health():
     return {"status": "ok"}
