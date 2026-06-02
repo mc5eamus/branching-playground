@@ -1,6 +1,18 @@
 from fastapi import FastAPI, HTTPException
+from typing import List
 
 app = FastAPI(title="Weather API", version="1.0.0")
+
+ELEPHANT_FACTS: List[str] = [
+    "Elephants are the largest land animals on Earth.",
+    "An elephant's trunk has over 40,000 muscles.",
+    "Elephants can recognise themselves in a mirror.",
+    "A baby elephant can stand within 20 minutes of birth.",
+    "Elephants mourn their dead and have been observed returning to the bones of deceased relatives.",
+    "The African elephant's ears are shaped roughly like the African continent.",
+    "Elephants communicate using infrasound — vibrations below the range of human hearing.",
+    "An adult elephant eats up to 300 kg of food per day.",
+]
 
 WEATHER_DATA = {
     "london": {
@@ -48,3 +60,9 @@ def get_weather(city: str):
     if data is None:
         raise HTTPException(status_code=404, detail=f"City '{city}' not found")
     return data
+
+
+@app.get("/elephants", tags=["🐘 Definitely Not Weather"])
+def get_elephant_facts():
+    """Returns a curated list of elephant facts. Unrelated to weather. No regrets."""
+    return {"facts": ELEPHANT_FACTS, "count": len(ELEPHANT_FACTS)}
