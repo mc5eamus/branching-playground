@@ -1,3 +1,5 @@
+import random
+
 from fastapi import FastAPI, HTTPException
 
 app = FastAPI(title="Weather API", version="1.0.0")
@@ -39,6 +41,11 @@ WEATHER_DATA = {
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+
+@app.get("/random")
+def get_random():
+    return {"value": random.random()}
 
 
 @app.get("/weather/{city}")

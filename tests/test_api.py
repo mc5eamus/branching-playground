@@ -30,3 +30,11 @@ def test_get_weather_case_insensitive():
 def test_get_weather_unknown_city():
     resp = client.get("/weather/Atlantis")
     assert resp.status_code == 404
+
+
+def test_get_random():
+    resp = client.get("/random")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert "value" in body
+    assert 0.0 <= body["value"] < 1.0
