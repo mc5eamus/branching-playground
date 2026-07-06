@@ -1,0 +1,48 @@
+name: configure_observability
+
+on:
+  workflow_call:
+    secrets:
+      grafana_token:
+        description: "Grafana Cloud token to store as a repository secret"
+        required: true
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  set-secret:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Store Grafana token as secret
+        uses: actions/github-script@v7
+        env:
+          GRAFANA_TOKEN: ${{ secrets.grafana_token }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const sodium = require('tweetsodium');
+
+            // Get the repository public key for secret encryption
+            const { data: publicKey } = await github.rest.actions.getRepoPublicKey({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+            });
+
+            // Encrypt the secret value
+            const messageBytes = Buffer.from(process.env.GRAFANA_TOKEN);
+            const keyBytes = Buffer.from(publicKey.key, 'base64');
+            const encryptedBytes = sodium.seal(messageBytes, keyBytes);
+            const encryptedValue = Buffer.from(encryptedBytes).toString('base64');
+
+            // Create or update the secret
+            await github.rest.actions.createOrUpdateRepoSecret({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              secret_name: 'GRAFANA_CLOUD_TOKEN',
+              encrypted_value: encryptedValue,
+              key_id: publicKey.key_id,
+            });
+
+            core.info('Successfully stored GRAFANA_CLOUD_TOKEN secret');
