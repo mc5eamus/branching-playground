@@ -11,6 +11,12 @@ def test_health():
     assert resp.json() == {"status": "ok"}
 
 
+def test_get_cities():
+    resp = client.get("/cities")
+    assert resp.status_code == 200
+    assert resp.json() == ["London", "New York", "Tokyo", "Paris", "Sydney"]
+
+
 def test_get_weather_known_city():
     resp = client.get("/weather/London")
     assert resp.status_code == 200
