@@ -1,0 +1,77 @@
+name: Update README with Recent Activity
+
+on:
+  schedule:
+    - cron: "0 0 * * *" # Runs daily at midnight UTC
+  workflow_dispatch: # Allow manual trigger
+
+permissions:
+  contents: write
+
+jobs:
+  update-readme:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: dev
+
+      - name: Fetch recent activity
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "## Recent Activity" > /tmp/activity.md
+          echo "" >> /tmp/activity.md
+          echo "*Last updated: $(date -u '+%Y-%m-%d %H:%M UTC')*" >> /tmp/activity.md
+          echo "" >> /tmp/activity.md
+
+          # Recent commits
+          echo "### Recent Commits" >> /tmp/activity.md
+          echo "" >> /tmp/activity.md
+          gh api repos/${{ github.repository }}/commits?per_page=5 \
+            --jq '.[] | "- [`\(.sha[0:7])`](\(.html_url)) \(.commit.message | split("\n")[0]) — *\(.commit.author.name)* (\(.commit.author.date[0:10]))"' \
+            >> /tmp/activity.md
+          echo "" >> /tmp/activity.md
+
+          # Recently closed pull requests
+          echo "### Recent Pull Requests" >> /tmp/activity.md
+          echo "" >> /tmp/activity.md
+          gh pr list --repo ${{ github.repository }} --state all --limit 5 \
+            --json number,title,state,author,updatedAt,url \
+            --jq '.[] | "- [#\(.number) \(.title)](\(.url)) — *\(.author.login)* (\(.state | ascii_downcase), \(.updatedAt[0:10]))"' \
+            >> /tmp/activity.md
+          echo "" >> /tmp/activity.md
+
+          # Recent issues
+          echo "### Recent Issues" >> /tmp/activity.md
+          echo "" >> /tmp/activity.md
+          ISSUES=$(gh issue list --repo ${{ github.repository }} --state all --limit 5 \
+            --json number,title,state,author,updatedAt,url \
+            --jq '.[] | "- [#\(.number) \(.title)](\(.url)) — *\(.author.login)* (\(.state | ascii_downcase), \(.updatedAt[0:10]))"')
+          if [ -z "$ISSUES" ]; then
+            echo "_No recent issues._" >> /tmp/activity.md
+          else
+            echo "$ISSUES" >> /tmp/activity.md
+          fi
+          echo "" >> /tmp/activity.md
+
+      - name: Update README
+        run: |
+          # Replace content between markers
+          sed -i '/<!-- ACTIVITY_START -->/,/<!-- ACTIVITY_END -->/{
+            /<!-- ACTIVITY_START -->/{
+              p
+              r /tmp/activity.md
+            }
+            /<!-- ACTIVITY_END -->/!d
+          }' README.md
+
+      - name: Commit and push if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git diff --quiet README.md || {
+            git add README.md
+            git commit -m "docs: update README with recent activity [skip ci]"
+            git push
+          }
